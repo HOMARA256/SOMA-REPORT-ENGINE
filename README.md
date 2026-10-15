@@ -1,6 +1,6 @@
 # SOMA REPORT ENGINE
 
-Multi-School Secondary School Academic Results and Report Card System
+School management system for secondary schools, including academic results and report cards.
 
 ## Architecture
 
