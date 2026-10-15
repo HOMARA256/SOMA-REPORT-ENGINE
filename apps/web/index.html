@@ -2,12 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ourschool-web</title>
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://pxmfwancbxpyffoodyig.supabase.co wss://pxmfwancbxpyffoodyig.supabase.co; upgrade-insecure-requests"
+    />
+    <meta
+      name="description"
+      content="SOMA REPORT ENGINE Multi-School Academic Results and Report Card System"
+    />
+    <meta name="theme-color" content="#0b3a78" />
+    <script src="/theme-init.js"></script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/soma-report-engine-logo.png" />
+    <link rel="apple-touch-icon" href="/soma-report-engine-logo.png" />
+    <title>SOMA REPORT ENGINE</title>
   </head>
+
   <body>
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

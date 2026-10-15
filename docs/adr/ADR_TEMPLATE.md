@@ -1,4 +1,4 @@
-# OURSCHOOL Architecture Decision Record
+# SOMA REPORT ENGINE Architecture Decision Record
 
 Status: Proposed
 

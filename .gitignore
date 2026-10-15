@@ -8,3 +8,9 @@ coverage/
 *.log
 playwright-report/
 test-results/
+var/
+.agents/
+.qwen/
+tmp/
+*.tsbuildinfo
+.coverage

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="SOMA REPORT ENGINE badge">
+  <circle cx="60" cy="60" r="56" fill="#173b79"/><circle cx="60" cy="60" r="48" fill="#fff" stroke="#d5b04c" stroke-width="4"/>
+  <path d="M31 48 60 33l29 15-29 15-29-15Z" fill="#173b79"/><path d="M42 58v19c12 9 24 9 36 0V58L60 68 42 58Z" fill="#2d63ad"/>
+  <path d="M88 50v25" stroke="#d5b04c" stroke-width="4" stroke-linecap="round"/><circle cx="88" cy="79" r="4" fill="#d5b04c"/>
+  <text x="60" y="101" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#173b79">SRE</text>
+</svg>

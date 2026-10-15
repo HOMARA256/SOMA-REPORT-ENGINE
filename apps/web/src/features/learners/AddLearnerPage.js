@@ -1,0 +1,49 @@
+import { ArrowLeft, Save, UserPlus } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { usePersistentLearners } from "./PersistentLearners";
+export default function AddLearnerPage() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const inOLevelWorkspace = location.pathname.startsWith("/school/o-level");
+    const canonicalDirectory = location.pathname === "/learners/new";
+    const listPath = canonicalDirectory ? "/learners" : inOLevelWorkspace ? "/school/o-level/learners" : "/school/learners";
+    const [params] = useSearchParams();
+    const workspace = usePersistentLearners();
+    const [programme, setProgramme] = useState("O_LEVEL");
+    const [classId, setClassId] = useState(params.get("class") ?? "");
+    const [streamId, setStreamId] = useState("");
+    const [form, setForm] = useState({ admissionNumber: "", firstName: "", otherName: "", lastName: "", gender: "", dateOfBirth: "", admissionDate: new Date().toISOString().slice(0, 10), guardianName: "", guardianPhone: "" });
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const classes = useMemo(() => workspace.classes.filter(c => c.status === "ACTIVE" && c.programme === programme), [workspace.classes, programme]);
+    const selected = classes.find(c => c.id === classId);
+    const year = workspace.academicYears.find(y => y.id === selected?.academicYearId) ?? workspace.academicYears.find(y => y.status === "ACTIVE") ?? workspace.academicYears[0];
+    function update(key, value) { setForm(current => ({ ...current, [key]: value })); setError(""); }
+    async function submit(event) { event.preventDefault(); if (!selected || !year) {
+        setError("Select an active class in a configured academic year.");
+        return;
+    } if (selected.streams.length && !streamId) {
+        setError("Select a stream for this class.");
+        return;
+    } setBusy(true); try {
+        const result = await workspace.createLearner({ academicYearId: selected.academicYearId, classId: selected.id, streamId: streamId || null, ...form });
+        if (result.id) {
+            const learnerName = [form.firstName, form.otherName, form.lastName].filter(Boolean).join(" ");
+            navigate(listPath, { state: { registrationNotice: result.error || `${learnerName} (${form.admissionNumber}) was saved and enrolled successfully.` } });
+            return;
+        }
+        setError(result.error || "Learner enrolment was not confirmed. Your entered information is still here; review the message before retrying.");
+    }
+    catch (submitError) {
+        setError(submitError instanceof Error ? submitError.message : "Learner enrolment was not confirmed. Your entered information is still here.");
+    }
+    finally {
+        setBusy(false);
+    } }
+    return <><button className="profile-back-button" onClick={() => navigate(inOLevelWorkspace ? "/school/o-level/learners" : "/school/learners")}><ArrowLeft size={16}/> Back to Learners</button><header className="page-heading"><div><span className="eyebrow">LEARNER MANAGEMENT</span><h1>Add and Enrol Learner</h1><p>Creates one persistent learner identity and one dated active enrolment in Supabase.</p></div></header>{workspace.error && <div className="form-error-message" role="alert">{workspace.error}</div>}{error && <div className="form-error-message" role="alert">{error}</div>}
+ <form onSubmit={submit}><section className="panel"><div className="panel-heading"><div className="panel-title-group"><span className="panel-icon"><UserPlus size={18}/></span><div><h2>Personal information</h2><p>Use the official school admission record.</p></div></div></div><div className="form-grid"><Field label="Admission number"><input required value={form.admissionNumber} onChange={e => update("admissionNumber", e.target.value)} placeholder="e.g. OSS/2026/001"/></Field><Field label="First name"><input required value={form.firstName} onChange={e => update("firstName", e.target.value)}/></Field><Field label="Other name"><input value={form.otherName} onChange={e => update("otherName", e.target.value)}/></Field><Field label="Last name"><input required value={form.lastName} onChange={e => update("lastName", e.target.value)}/></Field><Field label="Gender"><select required value={form.gender} onChange={e => update("gender", e.target.value)}><option value="">Select gender</option><option>Female</option><option>Male</option><option>Unspecified</option></select></Field><Field label="Date of birth"><input required type="date" value={form.dateOfBirth} max={new Date().toISOString().slice(0, 10)} onChange={e => update("dateOfBirth", e.target.value)}/></Field></div></section>
+ <section className="panel"><div className="panel-heading"><div><h2>Academic enrolment</h2><p>Class and stream must belong to the same school and academic year.</p></div></div><div className="form-grid"><Field label="Programme"><select value={programme} onChange={e => { setProgramme(e.target.value); setClassId(""); setStreamId(""); }}><option value="O_LEVEL">O-Level</option><option value="A_LEVEL">A-Level</option></select></Field><Field label="Class"><select required value={classId} onChange={e => { setClassId(e.target.value); setStreamId(""); }}><option value="">Select class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field><Field label="Stream"><select value={streamId} required={Boolean(selected?.streams.length)} disabled={!selected} onChange={e => setStreamId(e.target.value)}><option value="">{selected?.streams.length ? "Select stream" : "No stream required"}</option>{selected?.streams.filter(s => s.status === "ACTIVE").map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field><Field label="Admission date"><input required type="date" value={form.admissionDate} onChange={e => update("admissionDate", e.target.value)}/></Field></div></section>
+ <section className="panel"><div className="panel-heading"><div><h2>Parent or guardian</h2><p>Optional contact details for the primary guardian.</p></div></div><div className="form-grid"><Field label="Guardian name"><input value={form.guardianName} onChange={e => update("guardianName", e.target.value)}/></Field><Field label="Guardian phone"><input value={form.guardianPhone} onChange={e => update("guardianPhone", e.target.value)}/></Field></div></section><div className="form-actions"><button className="secondary-button" type="button" onClick={() => navigate("/school/learners")}>Cancel</button><button className="primary-button" disabled={busy || workspace.loading} type="submit"><Save size={17}/>{busy ? "Saving…" : "Save and Enrol Learner"}</button></div></form></>;
+}
+function Field({ label, children }) { return <label className="form-field"><span>{label}</span>{children}</label>; }

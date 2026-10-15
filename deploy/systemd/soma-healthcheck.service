@@ -1,0 +1,9 @@
+[Unit]
+Description=SOMA REPORT ENGINE production health check
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/soma-report-engine
+ExecStart=/bin/sh -c './scripts/vps-healthcheck.sh || ./scripts/notify-ops.sh "SOMA REPORT ENGINE health check failed"'

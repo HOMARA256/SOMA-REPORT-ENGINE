@@ -1,4 +1,4 @@
-# OURSCHOOL Development Rules
+# SOMA REPORT ENGINE Development Rules
 
 Every feature follows:
 

@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const learnerPage = readFileSync("apps/web/src/features/learners/LearnerSubjectsPage.tsx", "utf8");
+const classForm = readFileSync("apps/web/src/features/classes/NcdcClassForm.tsx", "utf8");
+const dialog = readFileSync("apps/web/src/components/common/ConfirmDialog.tsx", "utf8");
+const classSetup = readFileSync("apps/web/src/features/classes/PersistentClassSetup.ts", "utf8");
+const classCurriculum = readFileSync("apps/web/src/features/classes/NcdcClassCurriculumSection.tsx", "utf8");
+const classDetail = readFileSync("apps/web/src/features/classes/ClassDetailPage.tsx", "utf8");
+const classEditor = readFileSync("apps/web/src/features/classes/OLevelClassEditor.tsx", "utf8");
+const classEditMigration = readFileSync("supabase/migrations/20261006120000_update_o_level_class_details.sql", "utf8");
+const subjectChoiceRepair = readFileSync("supabase/migrations/20261006110000_restore_o_level_subject_choice_contract.sql", "utf8");
+
+test("learner elective setup does not call activation without a catalogue subject ID", () => {
+  assert.match(learnerPage, /if \(!setupChoice\.systemSubjectId\)/);
+  assert.match(learnerPage, /p_system_subject_id: setupChoice\.systemSubjectId/);
+  assert.match(learnerPage, /Setup needs refreshed database subject IDs/);
+  assert.match(learnerPage, /Refresh subject data/);
+  assert.match(learnerPage, /selectedElectives\.length === electiveIds\.length/);
+  assert.match(learnerPage, /savedChoice\?\.schoolActive && savedChoice\.classOffered && savedChoice\.available/);
+});
+
+test("O-Level class buttons leave the form after an atomic save and verify on the detail page", () => {
+  assert.match(classForm, /rpc\("create_o_level_curriculum_class"/);
+  assert.doesNotMatch(classForm, /rpc\("get_school_class_setup"/);
+  assert.match(classForm, /replace: true/);
+  assert.match(classForm, /classSetupExpectation:/);
+  assert.match(classDetail, /routeExpectation\.streamNames\.every/);
+  assert.match(classDetail, /routeExpectation\.electiveOfferingIds\.every/);
+  assert.match(classForm, /Save & Activate Class/);
+  assert.match(classForm, /Review the class register before trying again/i);
+  assert.match(classDetail, /Do not create it again/i);
+  assert.match(classForm, /setSubmissionUncertain\(true\)/);
+  assert.match(classForm, /Review class register/);
+});
+
+test("confirmation describes a future change, not an already-saved change", () => {
+  assert.match(dialog, /<dt>Expected change<\/dt>/);
+  assert.doesNotMatch(dialog, /<dt>Data changed<\/dt>/);
+});
+
+test("subject-choice repair restores the missing ID without rewriting enrolments", () => {
+  const mirror = readFileSync("database/migrations/070_restore_o_level_subject_choice_contract.sql", "utf8");
+  assert.equal(subjectChoiceRepair, mirror);
+  assert.match(subjectChoiceRepair, /create or replace function public\.get_o_level_learner_subject_choices\(p_enrolment_id uuid\)/i);
+  assert.match(subjectChoiceRepair, /'systemSubjectId',ss\.id/);
+  assert.match(subjectChoiceRepair, /grant execute on function public\.get_o_level_learner_subject_choices\(uuid\) to authenticated/i);
+  assert.match(subjectChoiceRepair, /notify pgrst, 'reload schema'/i);
+  assert.doesNotMatch(subjectChoiceRepair, /(?:insert|update|delete|truncate)\s+(?:into\s+|from\s+)?public\.learner_subject_enrolments/i);
+});
+
+test("same-school class saves retain the workspace and show verified feedback", () => {
+  assert.match(classSetup, /if \(loadedSchoolId\.current !== schoolId\) \{\s*setData\(empty\);\s*setLoading\(true\);/);
+  assert.match(classCurriculum, /rpc\("get_o_level_class_elective_menu", \{ p_class_id: record\.id \}\)/);
+  assert.match(classCurriculum, /Class elective menu saved and confirmed/);
+  assert.match(classCurriculum, /setConfirmActivate\(false\)/);
+  assert.match(classCurriculum, /feedbackRef\.current\?\.scrollIntoView/);
+  assert.match(classDetail, /form-success-message class-detail-notice/);
+  assert.match(learnerPage, /Select one available CRE or IRE subject before saving/);
+  assert.match(learnerPage, /feedbackRef\.current\?\.scrollIntoView/);
+});
+
+test("saved O-Level classes use explicit edit modes and an audited details RPC", () => {
+  assert.equal(classEditMigration, readFileSync("database/migrations/071_update_o_level_class_details.sql", "utf8"));
+  assert.match(classEditMigration, /create or replace function public\.update_o_level_class_details/i);
+  assert.match(classEditMigration, /not public\.is_school_admin_for\(v_class\.school_id\)/);
+  assert.match(classEditMigration, /O_LEVEL_CLASS_DETAILS_UPDATED/);
+  assert.match(classEditMigration, /grant execute on function public\.update_o_level_class_details\(uuid,text,integer,uuid\) to authenticated/i);
+  assert.match(classDetail, /Edit Class/);
+  assert.match(classDetail, /Edit Subject Offerings/);
+  assert.match(classDetail, /editSection==="class"&&<OLevelClassEditor/);
+  assert.match(classDetail, /editing=\{editSection==="subjects"\}/);
+  assert.match(classEditor, /rpc\("update_o_level_class_details"/);
+  assert.match(classEditor, /onSaved\("Class details saved/);
+  assert.match(classCurriculum, /editing && <div className="form-actions class-ncdc-actions">/);
+});

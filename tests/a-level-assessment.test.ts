@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { calculateSelectedPaperResult } from "../apps/api/src/modules/alevel/AlevelAssessmentService.ts";
+
+const present = (paperId: string, mark: number) => ({ paperId, mark, state: "PRESENT" as const, required: true });
+
+test("one selected paper is graded directly", () => assert.deepEqual(calculateSelectedPaperResult([present("P1", 74)]), { status: "COMPLETE", score: 74, blockingStates: [] }));
+test("a different single selected paper excludes unselected papers", () => assert.equal(calculateSelectedPaperResult([present("P2", 68)]).score, 68));
+test("two selected complete papers are averaged numerically", () => assert.equal(calculateSelectedPaperResult([present("P1", 74), present("P2", 68)]).score, 71));
+test("P1 and P3 can be selected while P2 is irrelevant", () => assert.equal(calculateSelectedPaperResult([present("P1", 80), present("P3", 70)]).score, 75));
+test("a selected missing paper makes the result incomplete", () => assert.deepEqual(calculateSelectedPaperResult([present("P1", 80), { paperId: "P2", mark: null, state: "MISSING", required: true }]), { status: "INCOMPLETE", score: null, blockingStates: ["MISSING"] }));
+test("PRESENT zero remains a valid score", () => assert.equal(calculateSelectedPaperResult([present("P1", 0)]).score, 0));
+test("unselected records are excluded", () => assert.equal(calculateSelectedPaperResult([present("P1", 80), { paperId: "P2", mark: 0, state: "PRESENT", required: false }]).score, 80));
+test("out-of-range PRESENT values are rejected", () => assert.throws(() => calculateSelectedPaperResult([present("P1", 101)]), RangeError));

@@ -1,4 +1,4 @@
-# OURSCHOOL
+# SOMA REPORT ENGINE
 
 Multi-School Secondary School Academic Results and Report Card System
 
@@ -18,3 +18,10 @@ Multi-School Secondary School Academic Results and Report Card System
 ## Development Process
 
 PRD -> Database -> Domain -> API -> UI -> Security -> Tests -> Documentation
+
+## Production deployment
+
+SOMA REPORT ENGINE is prepared for a Linux Cloud VPS with Docker, Nginx, HTTPS,
+container health checks, backup verification and host monitoring. Follow the
+[Jubilee Linux VPS runbook](docs/deployment/JUBILEE_LINUX_VPS_RUNBOOK.md) on the
+deployment host; do not commit the host `.env` file or any provider credentials.

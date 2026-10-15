@@ -1,0 +1,9 @@
+[Unit]
+Description=SOMA REPORT ENGINE backup evidence check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/soma-report-engine
+ExecStart=/bin/sh -c './scripts/backup-check.sh || ./scripts/notify-ops.sh "SOMA REPORT ENGINE backup check failed"'

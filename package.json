@@ -2,14 +2,24 @@
   "name": "ourschool",
   "version": "0.1.0",
   "private": true,
-  "description": "OURSCHOOL Multi-School Academic Results and Report Card System",
+  "description": "SOMA REPORT ENGINE Multi-School Academic Results and Report Card System",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "echo Stage 01 development environment",
-    "build": "echo Stage 01 build environment",
-    "test": "echo Stage 01 test environment"
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "lint": "npm run lint --workspace apps/web",
+    "test": "node --test --experimental-strip-types tests/*.test.ts",
+    "start": "npm run start --workspace apps/api",
+    "jobs": "npm run jobs --workspace apps/api",
+    "health": "npm run health --workspace apps/api",
+    "preflight:production": "sh scripts/production-preflight.sh",
+    "sync:migrations": "node scripts/sync-academic-migrations.mjs",
+    "migrate": "npm run sync:migrations && supabase db push"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
   }
 }

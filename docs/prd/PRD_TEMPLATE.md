@@ -1,4 +1,4 @@
-# OURSCHOOL Feature PRD
+# SOMA REPORT ENGINE Feature PRD
 
 ## 1. Problem
 

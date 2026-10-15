@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" role="img" aria-label="Demo learner portrait">
+  <rect width="240" height="300" fill="#e9eff8"/><circle cx="120" cy="104" r="52" fill="#9a674c"/>
+  <path d="M66 99c2-51 104-67 111 3-22-16-42-22-61-16-14 5-30 13-50 13Z" fill="#242938"/>
+  <path d="M34 300c4-74 38-112 86-112s82 38 86 112" fill="#173b79"/><path d="m88 188 32 42 32-42" fill="#fff"/>
+  <circle cx="101" cy="108" r="4" fill="#242938"/><circle cx="139" cy="108" r="4" fill="#242938"/><path d="M101 139c13 9 25 9 38 0" fill="none" stroke="#663e31" stroke-width="4" stroke-linecap="round"/>
+</svg>

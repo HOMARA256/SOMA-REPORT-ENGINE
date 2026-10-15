@@ -1,0 +1,11 @@
+{
+  "name": "ourschool-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "jobs": "node src/worker.mjs",
+    "health": "node src/healthcheck.mjs"
+  }
+}

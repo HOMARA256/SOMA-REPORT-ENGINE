@@ -1,0 +1,58 @@
+import { ArrowLeft, Save } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { usePersistentClassSetup } from "./PersistentClassSetup";
+import { NcdcClassForm } from "./NcdcClassForm";
+export function ClassFormPage() {
+    const location = useLocation();
+    const inOLevelWorkspace = location.pathname.startsWith("/school/o-level");
+    const inALevelWorkspace = location.pathname.startsWith("/school/alevel");
+    const initialProgramme = location.search.includes("programme=A_LEVEL") || inALevelWorkspace ? "A_LEVEL" : "O_LEVEL";
+    const [programme, setProgramme] = useState(initialProgramme);
+    return <><Link className="profile-back-button class-back-link" to={inOLevelWorkspace ? "/school/o-level/classes" : inALevelWorkspace ? "/school/alevel" : "/setup/classes"}><ArrowLeft size={16}/> Back to Classes</Link><header className="page-heading"><div><span className="eyebrow">{inOLevelWorkspace ? "O-LEVEL WORKSPACE" : inALevelWorkspace ? "A-LEVEL WORKSPACE" : "ACADEMIC MANAGEMENT"}</span><h1>{inOLevelWorkspace ? "Create O-Level Class" : inALevelWorkspace ? "Create A-Level Class" : "Create Class"}</h1><p>{inOLevelWorkspace ? "Create an S1–S4 class in the selected school and academic year." : inALevelWorkspace ? "Create a Senior 5 or Senior 6 class in the selected school and academic year." : "Choose the programme and configure its curriculum, streams and class teacher."}</p></div></header>{!inOLevelWorkspace && !inALevelWorkspace && <section className="panel ncdc-programme-picker"><label className="form-field"><span>Programme</span><select value={programme} onChange={event => setProgramme(event.target.value)}><option value="O_LEVEL">O-Level · NCDC Lower Secondary</option><option value="A_LEVEL">A-Level</option></select></label></section>}{programme === "O_LEVEL" ? <NcdcClassForm /> : <ALevelClassForm />}</>;
+}
+function ALevelClassForm() {
+    const setup = usePersistentClassSetup();
+    const navigate = useNavigate();
+    const { classId } = useParams();
+    const existing = setup.classes.find(item => item.id === classId);
+    const programme = "A_LEVEL";
+    const [level, setLevel] = useState(5);
+    const [name, setName] = useState("");
+    const [capacity, setCapacity] = useState("");
+    const [teacher, setTeacher] = useState("");
+    const [status, setStatus] = useState("DRAFT");
+    const [selectedSubjects, setSelectedSubjects] = useState([]);
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const year = setup.academicYears.find(item => item.status === "ACTIVE") ?? setup.academicYears[0];
+    const subjects = setup.activatedSubjects.filter(item => item.programme === programme && (!year || item.academicYearId === year.id));
+    async function submit(event) { event.preventDefault(); if (!year) {
+        setError("Create an academic year before creating a class.");
+        return;
+    } setBusy(true); setError(""); try {
+        const result = await setup.createClass({ academicYearId: year.id, programme, level, name: name.trim(), status, capacity: capacity ? Number(capacity) : null, classTeacherUserId: teacher || null });
+        if (!result.id) {
+            setError(result.error || "Class creation was not confirmed. Review the message before retrying.");
+            return;
+        }
+        if (result.error) {
+            navigate(`/school/alevel/classes/${result.id}`, { state: { classSetupNotice: result.error } });
+            return;
+        }
+        const offeringError = await setup.offerSubjects(result.id, selectedSubjects);
+        navigate(`/school/alevel/classes/${result.id}`, { state: offeringError ? { classSetupNotice: `Class saved. ${offeringError}` } : { classSetupNotice: `${name.trim()} was saved successfully and is now available for learner enrolment and teacher allocation.` } });
+    }
+    catch (submitError) {
+        setError(submitError instanceof Error ? submitError.message : "Class creation was not confirmed. The form is still available; refresh and verify before retrying.");
+    }
+    finally {
+        setBusy(false);
+    } }
+    if (classId && !setup.loading && !existing)
+        return <section className="panel"><h1>Class not found</h1><Link to="/school/alevel">Return to A-Level Workspace</Link></section>;
+    return <><Link className="profile-back-button class-back-link" to="/school/alevel"><ArrowLeft size={16}/> Back to A-Level Workspace</Link><header className="page-heading"><div><span className="eyebrow">A-LEVEL WORKSPACE</span><h1>{classId ? `Configure ${existing?.name ?? "Class"}` : "Create Persistent A-Level Class"}</h1><p>Create or review a Senior 5 or Senior 6 class linked to the school, academic year, staff and activated A-Level subjects.</p></div></header>{error && <p className="form-error" role="alert">{error}</p>}
+ <form onSubmit={submit}><section className="panel"><div className="panel-heading"><div><h2>A-Level class identity</h2><p>{year ? `Academic year: ${year.name}` : "No configured academic year"}</p></div></div><div className="form-grid"><label className="form-field"><span>Class name</span><input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Senior 5"/></label><label className="form-field"><span>Level</span><select value={level} onChange={e => setLevel(Number(e.target.value))}>{[5, 6].map(value => <option key={value} value={value}>Senior {value}</option>)}</select></label><label className="form-field"><span>Capacity</span><input type="number" min="1" value={capacity} onChange={e => setCapacity(e.target.value)} placeholder="Optional"/></label><label className="form-field"><span>Class teacher</span><select value={teacher} onChange={e => setTeacher(e.target.value)}><option value="">Assign later</option>{setup.staff.filter(item => ["TEACHER", "HEAD_TEACHER", "DEPUTY_HEAD_TEACHER", "DIRECTOR_OF_STUDIES", "SCHOOL_ADMIN"].includes(item.role)).map(item => <option key={item.userId} value={item.userId}>{item.name} · {item.role.replaceAll("_", " ")}</option>)}</select></label><label className="form-field"><span>Status</span><select value={status} onChange={e => setStatus(e.target.value)}><option>DRAFT</option><option>ACTIVE</option></select></label></div></section>
+ <section className="panel class-activated-subject-selector"><div className="panel-heading"><div><h2>Activated subjects</h2><p>Displayed directly from the school offerings selected from the Platform Subject Catalogue. Selection prepares the downstream offering step.</p></div><strong>{selectedSubjects.length} selected</strong></div><div className="activated-subject-grid">{subjects.map(subject => <label key={subject.id}><input type="checkbox" checked={selectedSubjects.includes(subject.id)} onChange={() => setSelectedSubjects(current => current.includes(subject.id) ? current.filter(id => id !== subject.id) : [...current, subject.id])}/><span><strong>{subject.code} · {subject.name}</strong><small>{subject.paperCount} paper{subject.paperCount === 1 ? "" : "s"}{subject.compulsory ? " · Compulsory" : ""}</small></span></label>)}{!subjects.length && !setup.loading && <p>No activated A-Level subjects are available. Activate them in Subject Settings first.</p>}</div></section>
+ <div className="form-actions"><Link className="secondary-button" to="/school/alevel">Cancel</Link><button className="primary-button" disabled={busy || setup.loading || Boolean(classId)} type="submit"><Save size={17}/>{busy ? "Saving…" : "Save Persistent Class"}</button></div></form></>;
+}

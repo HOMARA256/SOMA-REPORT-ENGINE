@@ -1,0 +1,18 @@
+{
+  "name": "SOMA REPORT ENGINE",
+  "short_name": "SOMA",
+  "description": "Multi-school academic results and report card system",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#0b3a78",
+  "icons": [
+    {
+      "src": "/soma-report-engine-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

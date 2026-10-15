@@ -1,0 +1,71 @@
+import { ArrowLeft, BookOpen, CheckCircle2, GraduationCap, Layers3, Pencil, Plus, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { usePersistentClassSetup } from "./PersistentClassSetup";
+import { NcdcClassCurriculumSection } from "./NcdcClassCurriculumSection";
+import { OLevelClassEditor } from "./OLevelClassEditor";
+import { currentUser } from "../../config/currentUser";
+export function ClassDetailPage() {
+    const { classId } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const inOLevelWorkspace = location.pathname.startsWith("/school/o-level");
+    const routeNotice = typeof location.state?.classSetupNotice === "string" ? location.state.classSetupNotice : "";
+    const routeExpectation = location.state?.classSetupExpectation;
+    const setup = usePersistentClassSetup();
+    const record = setup.classes.find(item => item.id === classId);
+    const [streamName, setStreamName] = useState("");
+    const [capacity, setCapacity] = useState("");
+    const [selectedSubjects, setSelectedSubjects] = useState([]);
+    const [notice, setNotice] = useState(routeNotice);
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [editSection, setEditSection] = useState(null);
+    const noticeRef = useRef(null);
+    const classesPath = inOLevelWorkspace ? "/school/o-level/classes" : "/setup/classes";
+    const canManageClass = currentUser.role === "SCHOOL_ADMIN" && currentUser.permissions.includes("users.manage");
+    const classSaveVerified = !routeExpectation || Boolean(record && record.academicYearId === routeExpectation.academicYearId && record.programme === routeExpectation.programme && record.level === routeExpectation.level && record.status === routeExpectation.status && routeExpectation.streamNames.every(name => record.streams.some(stream => stream.name === name)) && routeExpectation.electiveOfferingIds.every(id => record.subjects.some(subject => subject.id === id)));
+    useEffect(() => { if (routeExpectation && record && classSaveVerified)
+        navigate(location.pathname, { replace: true, state: { classSetupNotice: routeNotice } }); }, [routeExpectation, record, classSaveVerified, location.pathname, routeNotice, navigate]);
+    useEffect(() => { if (!editSection)
+        return; const frame = window.requestAnimationFrame(() => document.getElementById(editSection === "class" ? "class-editor" : "class-subject-offerings")?.scrollIntoView({ block: "start", behavior: "auto" })); return () => window.cancelAnimationFrame(frame); }, [editSection]);
+    useEffect(() => { if (notice)
+        noticeRef.current?.scrollIntoView({ block: "center", behavior: "auto" }); }, [notice]);
+    async function addStream(event) { event.preventDefault(); if (!canManageClass) {
+        setError("Only the School Administrator can edit class structure.");
+        return;
+    } if (!record)
+        return; setBusy(true); const failure = await setup.createStream(record.id, streamName.trim(), capacity ? Number(capacity) : null); setBusy(false); if (failure) {
+        setError(failure);
+        return;
+    } setStreamName(""); setCapacity(""); setError(""); setNotice("Stream saved to the persistent academic record."); }
+    async function assignSubjects() { if (!canManageClass) {
+        setError("Only the School Administrator can edit class subject offerings.");
+        return;
+    } if (!record || !selectedSubjects.length)
+        return; setBusy(true); const failure = await setup.offerSubjects(record.id, selectedSubjects); setBusy(false); if (failure) {
+        setError(failure);
+        return;
+    } setSelectedSubjects([]); setError(""); setNotice("Subjects assigned to this class and available to downstream allocation workflows."); }
+    if (setup.loading)
+        return <section className="panel"><h1>Loading class workspace…</h1></section>;
+    if (setup.error)
+        return <section className="panel class-not-found"><h1>Class workspace unavailable</h1><p>{routeExpectation ? `Class ${classId} was saved, but its details could not load. Do not create it again. ${setup.error}` : setup.error}</p><button className="secondary-button" type="button" onClick={() => void setup.reload()}>Retry loading class</button><Link to={classesPath}>Return to Classes</Link></section>;
+    if (!record)
+        return <section className="panel class-not-found"><h1>Class not found</h1><p>{routeExpectation ? `Class ${classId} was saved, but it is not yet visible in the register. Do not create it again; retry loading or review the class list.` : "This class is not available in the signed-in school."}</p><button className="secondary-button" type="button" onClick={() => void setup.reload()}>Retry loading class</button><Link to={classesPath}>Return to Classes</Link></section>;
+    const year = setup.academicYears.find(item => item.id === record.academicYearId);
+    const teacher = setup.staff.find(item => item.userId === record.classTeacherUserId);
+    return <>
+  <Link className="profile-back-button class-back-link" to={classesPath}><ArrowLeft size={16}/> All classes</Link>
+  <header className="class-detail-header"><div><span className="eyebrow">PERSISTENT CLASS WORKSPACE</span><h1>{record.name}</h1><p>{record.programme === "O_LEVEL" ? "O-Level" : "A-Level"} · Senior {record.level} · {year?.name ?? "Academic year"}</p><span className={`class-status class-status-${record.status.toLowerCase()}`}>{record.status}</span></div>{record.programme === "O_LEVEL" && canManageClass && <div className="class-detail-edit-actions"><button className="secondary-button" type="button" disabled={editSection !== null} onClick={() => { setError(""); setEditSection("class"); }}><Pencil size={17} aria-hidden="true"/>Edit Class</button><button className="primary-button" type="button" disabled={editSection !== null} onClick={() => { setError(""); setEditSection("subjects"); }}><BookOpen size={17} aria-hidden="true"/>Edit Subject Offerings</button></div>}</header>
+  {notice && (classSaveVerified || notice !== routeNotice) && <p ref={noticeRef} className="form-success-message class-detail-notice" role="status"><CheckCircle2 size={18} aria-hidden="true"/>{notice}</p>}
+  {!classSaveVerified && <p className="form-error class-detail-notice" role="alert">The class was saved, but its status, streams, or elective menu could not yet be verified. Refresh this class before making another change; do not create it again.</p>}
+  {record.programme === "O_LEVEL" && error && <p className="form-error class-detail-notice" role="alert">{error}</p>}
+  <section className="class-detail-summary"><article><GraduationCap /><span>Active learners</span><strong>{record.learnerCount}</strong></article><article><Layers3 /><span>Streams</span><strong>{record.streams.length}</strong></article><article><BookOpen /><span>Offered subjects</span><strong>{record.subjects.length}</strong></article><article><Users /><span>Class teacher</span><strong className="class-summary-name">{teacher?.name ?? "Not assigned"}</strong></article></section>
+  <div className="class-detail-grid"><section className="panel"><div className="panel-heading"><div><h2>Class configuration</h2><p>Supabase-backed school and academic-year relationship.</p></div></div><dl className="class-facts"><div><dt>Academic year</dt><dd>{year?.name ?? "—"}</dd></div><div><dt>Programme</dt><dd>{record.programme === "O_LEVEL" ? "O-Level" : "A-Level"}</dd></div><div><dt>Capacity</dt><dd>{record.capacity ?? "Not set"}</dd></div><div><dt>Class teacher</dt><dd>{teacher?.name ?? "Not assigned"}</dd></div><div><dt>Status</dt><dd>{record.status}</dd></div></dl></section>
+  <section className="panel"><div className="panel-heading"><div><h2>Connected workflows</h2><p>Open downstream pages using this persistent class.</p></div></div><div className="class-action-grid class-action-grid-compact"><Link to={`/people/learners?class=${record.id}`}><Users /><strong>Learners</strong><span>Review class enrolments.</span></Link><Link to={`/marks/marksheet?class=${record.id}`}><BookOpen /><strong>Marksheet</strong><span>Open class results.</span></Link><Link to={`/reports/cards?class=${record.id}`}><GraduationCap /><strong>Report cards</strong><span>Prepare class reports.</span></Link></div></section></div>
+  {record.programme === "O_LEVEL" && canManageClass && editSection === "class" && <OLevelClassEditor key={record.id} record={record} staff={setup.staff} reload={setup.reload} createStream={setup.createStream} onCancel={() => setEditSection(null)} onSaved={message => { setEditSection(null); setError(""); setNotice(message); }} onRefreshError={message => { setNotice(""); setError(message); }}/>}
+  <section className="panel class-section-panel"><div className="panel-heading"><div><h2>Streams</h2><p>Streams are persisted under this class and academic year.</p></div></div>{record.programme !== "O_LEVEL" && canManageClass && <form className="class-stream-form class-stream-form-simple" onSubmit={addStream}><label><span>Stream name</span><input required value={streamName} onChange={e => setStreamName(e.target.value)} placeholder="e.g. East"/></label><label><span>Capacity</span><input type="number" min="1" value={capacity} onChange={e => setCapacity(e.target.value)} placeholder="Optional"/></label><button className="primary-button" disabled={busy} type="submit"><Plus size={16}/>{busy ? "Saving…" : "Add stream"}</button>{error && <p className="form-error-message" role="alert">{error}</p>}</form>}{record.programme !== "O_LEVEL" && !canManageClass && <p className="field-helper-text">Only the School Administrator can change class streams.</p>}<div className="table-wrapper"><table className="data-table class-detail-table"><thead><tr><th>Stream</th><th>Capacity</th><th>Status</th></tr></thead><tbody>{record.streams.map(stream => <tr key={stream.id}><td><strong>{stream.name}</strong></td><td>{stream.capacity ?? "Not set"}</td><td><span className={`class-status class-status-${stream.status.toLowerCase()}`}>{stream.status}</span></td></tr>)}{!record.streams.length && <tr><td colSpan={3}>No streams configured yet.</td></tr>}</tbody></table></div></section>
+  {record.programme === "O_LEVEL" ? <NcdcClassCurriculumSection record={record} reload={setup.reload} editing={canManageClass && editSection === "subjects"} onCancel={() => setEditSection(null)} onSaved={message => { setEditSection(null); setError(""); setNotice(message); }}/> : <section className="panel class-section-panel"><div className="panel-heading"><div><h2>Activated subjects offered to this class</h2><p>Only school offerings selected from the Platform Subject Catalogue appear here.</p></div>{canManageClass && <Link className="text-button" to="/setup/subjects">Subject settings</Link>}</div><div className="activated-subject-grid">{record.subjects.map(subject => <article key={subject.id}><strong>{subject.code} · {subject.name}</strong><span>{subject.compulsory ? "Compulsory" : "Elective"}</span></article>)}{!record.subjects.length && <p>No subjects have been offered to this class yet.</p>}</div>{canManageClass && setup.activatedSubjects.some(subject => subject.academicYearId === record.academicYearId && subject.programme === record.programme && !record.subjects.some(current => current.id === subject.id)) && <div className="class-subject-assignment"><h3>Add activated subjects</h3><div className="activated-subject-grid">{setup.activatedSubjects.filter(subject => subject.academicYearId === record.academicYearId && subject.programme === record.programme && !record.subjects.some(current => current.id === subject.id)).map(subject => <label key={subject.id}><input type="checkbox" checked={selectedSubjects.includes(subject.id)} onChange={() => setSelectedSubjects(current => current.includes(subject.id) ? current.filter(id => id !== subject.id) : [...current, subject.id])}/><span><strong>{subject.code} · {subject.name}</strong><small>{subject.compulsory ? "Compulsory" : "Elective"} · {subject.paperCount} paper{subject.paperCount === 1 ? "" : "s"}</small></span></label>)}</div><button type="button" className="primary-button" disabled={busy || !selectedSubjects.length} onClick={() => void assignSubjects()}>{busy ? "Saving…" : `Assign ${selectedSubjects.length} subject${selectedSubjects.length === 1 ? "" : "s"}`}</button></div>}</section>}
+ </>;
+}
